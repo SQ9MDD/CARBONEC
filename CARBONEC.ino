@@ -16,30 +16,56 @@
 
 //konfiguracja (jeśli nie uzywasz domoticza do konfiguracji)
 unsigned long podajnik_praca_czas = 15000;              // czas jednorazowego podawania wegla
-int temperatura_pieca_odczyt = 0;
+int temperatura_pieca_odczyt = 0;                       // C*10 pomiar temperatury na piecu
 int temperatura_alarm_pieca = 750;                      // C*10 temperatura przy ktorej uruchamiam alarm i powiadomienie
 int temperatura_setpoint_pieca = 550;                   // C*10 temperatura nastawa pieca (wylaczenie nadmuchu, wyłaczenie flagi rozruch)
 int temperatura_wlacz_nadmuch = 530;                    // C*10 temperatura wlaczenia nadmuchu
 int temperatura_wlacz_podajnik = 520;                   // C*10 temperatura wlaczenia podajnika
+int temperatura_wlacz_pompe = 450;                      // C*10 temperatura startu pompy (nie potrzebne zezwolenie pracy)
+int temperatura_wylacz_pompe = 400; 
 
 //wejscia wyjscia
-static int drv_ptt = 2;
-static int drv_went = 3;
-static int drv_podajnik = 4;                            // LOW - praca, HIGH - stop
-static int drv_pompa_wody = 5;
-static int sens_woda_temp = 6;
-static int sens_paliwo_poziom = 0;
-static int reczny_podajnik = A0;                        //LOW - podawanie ręczne
-static int praca_stop = A1;                             //LOW - praca, przycisk chwilowy
+static int drv_ptt = 2;                                 // sterowanie transceiverem RS485
+static int drv_went = 3;                                // wentylator LOW - praca, HIGH - stop
+static int drv_podajnik = 4;                            // podajnik paliwa LOW - praca, HIGH - stop
+static int drv_pompa_wody = 5;                          // pompa wody
+static int sens_woda_temp = 6;                          // wejscie pomiarowe czujnika temperatury
+static int sens_paliwo_poziom = 0;                      // wejscie awaria brak paliwa
+static int reczny_podajnik = A0;                        // LOW - podawanie ręczne
+static int praca_stop = A1;                             // LOW - praca, przycisk chwilowy
 
 
 //zmienne pomocnicze
-int flaga_rozruch = 0;
-int pozwolenie_pracy_piec = 0;                          //flaga zezwolenia pracy pieca, ustawiana recznie lub z sieci
-int pozwolenie_pracy_podajnik = 0;
-int flaga_chwilowa_blokada_podajnika = 0;
-unsigned long czas_wylaczyc_podajnik = 0;
-unsigned long czas_na_pomiar = 0;
+int flaga_rozruch = 0;                                  // flaga sygnalizacyjna rozruch pieca
+int flaga_awaria = 0;                                   // flaga sygnalizacyjna awarii pieca
+int pozwolenie_pracy_piec = 0;                          // flaga zezwolenia pracy pieca, ustawiana recznie lub z sieci
+int pozwolenie_pracy_podajnik = 0;                      // 
+int flaga_chwilowa_blokada_podajnika = 0;               // blokada by podajnik zbyt często nie podawał paliwa
+unsigned long czas_wylaczyc_podajnik = 0;               //
+unsigned long czas_na_pomiar = 0;                       //
+
+//blokady i awarie
+void blokady(){
+//jesli uzytkownik ustawi bzdury w setupie wylacz piec
+  if(temperatura_setpoint_pieca <= temperatura_wlacz_nadmuch || temperatura_setpoint_pieca <= temperatura_wlacz_podajnik){
+    pozwolenie_pracy_piec = 0;
+    flaga_awaria = 1;
+  }
+  if(temperatura_pieca_odczyt >= temperatura_alarm_pieca){
+    pozwolenie_pracy_piec = 0;
+    flaga_awaria = 1;    
+  }
+}
+
+//sterowanie pompa obiegowa pracuje zawsze
+void sterowanie_pompa(){
+  if(temperatura_pieca_odczyt >= temperatura_wlacz_pompe){
+    digitalWrite(drv_pompa_wody,LOW);
+  }
+  if(temperatura_pieca_odczyt <= temperatura_wylacz_pompe){
+    digitalWrite(drv_pompa_wody,HIGH);  
+  }
+}
 
 //funkcje sterowania wentylatorem
 void sterowanie_wentylatorem(){
