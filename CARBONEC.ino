@@ -14,7 +14,9 @@
  *  Tryby pracy, rozpalanie, praca ciągła.
  * 
  */
-//
+// biblioteki
+#include <OneWire.h>
+#include <DallasTemperature.h>
 
 //konfiguracja (jeśli nie uzywasz domoticza do konfiguracji)
 unsigned long podajnik_praca_czas = 15000;              // czas jednorazowego podawania wegla
@@ -23,15 +25,15 @@ int temperatura_alarm_pieca = 750;                      // C*10 temperatura przy
 int temperatura_setpoint_pieca = 550;                   // C*10 temperatura nastawa pieca (wylaczenie nadmuchu, wyłaczenie flagi rozruch)
 int temperatura_wlacz_nadmuch = 530;                    // C*10 temperatura wlaczenia nadmuchu
 int temperatura_wlacz_podajnik = 520;                   // C*10 temperatura wlaczenia podajnika
-int temperatura_wlacz_pompe = 450;                      // C*10 temperatura startu pompy (nie potrzebne zezwolenie pracy)
-int temperatura_wylacz_pompe = 400; 
+int temperatura_wlacz_pompe = 300;                      // C*10 temperatura startu pompy (nie potrzebne zezwolenie pracy)
+int temperatura_wylacz_pompe = 280; 
 
 //wejscia wyjscia
 static int drv_ptt = 2;                                 // sterowanie transceiverem RS485
 static int drv_went = 3;                                // wentylator LOW - praca, HIGH - stop
 static int drv_podajnik = 4;                            // podajnik paliwa LOW - praca, HIGH - stop
 static int drv_pompa_wody = 5;                          // pompa wody
-static int sens_woda_temp = 6;                          // wejscie pomiarowe czujnika temperatury
+static int sens_woda_temp = 7;                          // wejscie pomiarowe czujnika temperatury
 static int sens_paliwo_poziom = 0;                      // wejscie awaria brak paliwa
 static int reczny_podajnik = A0;                        // LOW - podawanie ręczne
 static int praca_stop = A1;                             // LOW - praca, przycisk chwilowy
@@ -41,7 +43,7 @@ static int praca_stop = A1;                             // LOW - praca, przycisk
 int flaga_rozruch = 0;                                  // flaga sygnalizacyjna rozruch pieca
 int flaga_awaria = 0;                                   // flaga sygnalizacyjna awarii pieca
 int pozwolenie_pracy_piec = 0;                          // flaga zezwolenia pracy pieca, ustawiana recznie lub z sieci
-int pozwolenie_pracy_went = 0;                          //
+int wymuszenie_pracy_went = 0;                          //
 int pozwolenie_pracy_podajnik = 0;                      // 
 int flaga_chwilowa_blokada_podajnika = 0;               // blokada by podajnik zbyt często nie podawał paliwa
 int licznik_podan_kolejnych = 0;
@@ -49,15 +51,26 @@ unsigned long czas_wylaczyc_podajnik = 0;               //
 unsigned long czas_na_pomiar = 0;                       //
 unsigned long czas_resetu_podanie_kolejne = 0;
 
+//inicjalizacja bibliotek OneWire i Dallas temp
+OneWire oneWire(7);
+DallasTemperature sensors(&oneWire);
+
 // mierzymy temperature co 5 sekund
 void pomiar_temp(){
   if(millis() >= czas_na_pomiar){
     //tutaj robimy pomiar temperatury dallas
-
+    sensors.requestTemperatures();
+    //Serial.println(sensors.getTempCByIndex(0));    
+    float tempC = sensors.getTempCByIndex(0);
+    //Serial.println(tempC);
+    temperatura_pieca_odczyt = int(tempC*10);
+    /* START DEBUG*/
+    Serial.println(String(temperatura_pieca_odczyt)+","+pozwolenie_pracy_piec+","+flaga_rozruch+","+wymuszenie_pracy_went+","+pozwolenie_pracy_podajnik+","+flaga_chwilowa_blokada_podajnika+","+licznik_podan_kolejnych); //debug
+    /* STOP DEBUG*/
     //zdejmowanie flagi rozruchu po osiągnięciu temperatury zadanej pieca
     if(temperatura_pieca_odczyt >= temperatura_setpoint_pieca){
       flaga_rozruch = 0;
-      pozwolenie_pracy_went = 0; //przeniesc do automat_wentylator
+      wymuszenie_pracy_went = 0; //przeniesc do automat_wentylator
     }
     //ustawiamy czas nastepnego pomiaru
     czas_na_pomiar = millis() + 5000;
@@ -90,7 +103,7 @@ void sterowanie_pompa(){
 
 //funkcje sterowania wentylatorem
 void sterowanie_wentylatorem(){
-  if(flaga_rozruch == 1 || pozwolenie_pracy_went == 1){
+  if(flaga_rozruch == 1 || wymuszenie_pracy_went == 1){
     digitalWrite(drv_went,LOW);
   }else{
     digitalWrite(drv_went,HIGH);
@@ -143,6 +156,7 @@ void sterowanie_podajnik(){
 
 //uruchamianie sterownika
 void setup() {
+  sensors.begin();
   pinMode(drv_ptt,OUTPUT);
   pinMode(drv_went,OUTPUT);
   pinMode(drv_podajnik,OUTPUT);
