@@ -12,21 +12,27 @@
  *    
  *  Komunikacja, protokół my sensors po RS-485
  *  Tryby pracy, rozpalanie, praca ciągła.
+ *  
+ *  CHANGELOG
+ *  20160302 poprawki naliczania powtorzen podajnika, czasy pracy podajnika i interwalu pomiedzy wyrzucone do konfiguracji
  * 
  */
 // biblioteki
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
-//konfiguracja (jeśli nie uzywasz domoticza do konfiguracji)
-unsigned long podajnik_praca_czas = 15000;              // czas jednorazowego podawania wegla
-int temperatura_pieca_odczyt = 0;                       // C*10 pomiar temperatury na piecu
-int temperatura_alarm_pieca = 750;                      // C*10 temperatura przy ktorej uruchamiam alarm i powiadomienie
-int temperatura_setpoint_pieca = 550;                   // C*10 temperatura nastawa pieca (wylaczenie nadmuchu, wyłaczenie flagi rozruch)
-int temperatura_wlacz_nadmuch = 530;                    // C*10 temperatura wlaczenia nadmuchu
-int temperatura_wlacz_podajnik = 520;                   // C*10 temperatura wlaczenia podajnika
-int temperatura_wlacz_pompe = 300;                      // C*10 temperatura startu pompy (nie potrzebne zezwolenie pracy)
+//****************konfiguracja (jeśli nie uzywasz domoticza do konfiguracji)*****************************
+unsigned long podajnik_praca_czas = 15000;                  // czas jednorazowego podawania wegla
+int temperatura_pieca_odczyt = 0;                           // C*10 pomiar temperatury na piecu
+int temperatura_alarm_pieca = 750;                          // C*10 temperatura przy ktorej uruchamiam alarm i powiadomienie
+int temperatura_setpoint_pieca = 550;                       // C*10 temperatura nastawa pieca (wylaczenie nadmuchu, wyłaczenie flagi rozruch)
+int temperatura_wlacz_nadmuch = 530;                        // C*10 temperatura wlaczenia nadmuchu
+int temperatura_wlacz_podajnik = 520;                       // C*10 temperatura wlaczenia podajnika
+int temperatura_wlacz_pompe = 300;                          // C*10 temperatura startu pompy (nie potrzebne zezwolenie pracy)
 int temperatura_wylacz_pompe = 280; 
+unsigned long dlugosc_czasu_pracy_podajnika = 45000;        // jak długo pracuje podajnik po impulsie (msec)
+unsigned long interwal_pomiedzy_praca_podajnika = 30000;    // po skonczonej pracy podajnika czekaj (msec)
+//**************koniec konfiguracji nie modyfikuj nic poniżej jesli nie musisz***************************
 
 //wejscia wyjscia
 static int drv_ptt = 2;                                 // sterowanie transceiverem RS485
@@ -118,15 +124,15 @@ void automat_podajnik(){
     if(temperatura_pieca_odczyt <= temperatura_wlacz_podajnik){
       uruchom_podajnik();
       flaga_chwilowa_blokada_podajnika = 1; 
-      czas_resetu_podanie_kolejne = millis() + 90000; 
+      czas_resetu_podanie_kolejne = millis() + dlugosc_czasu_pracy_podajnika + interwal_pomiedzy_praca_podajnika; 
     }
   }
-  //trzykrotny reset flagi blokady co 90 sekund jesli temperatura nie wzrasta 
-  if(temperatura_pieca_odczyt < temperatura_setpoint_pieca && licznik_podan_kolejnych < 3 && flaga_rozruch == 0 && pozwolenie_pracy_piec == 1){
+  //trzykrotny reset flagi blokady co xxx sekund jesli temperatura nie wzrasta 
+  if(temperatura_pieca_odczyt < temperatura_setpoint_pieca && licznik_podan_kolejnych < 3 && flaga_rozruch == 0 && pozwolenie_pracy_piec == 1 && flaga_chwilowa_blokada_podajnika == 1){
     if(millis() >= czas_resetu_podanie_kolejne){
       flaga_chwilowa_blokada_podajnika = 0;
       licznik_podan_kolejnych++; 
-      czas_resetu_podanie_kolejne = millis() + 90000;     
+      czas_resetu_podanie_kolejne = millis() + dlugosc_czasu_pracy_podajnika + interwal_pomiedzy_praca_podajnika;     
     }    
   }  
   //reset flagi podajnika jesli osiagnelismy temperature
@@ -140,7 +146,7 @@ void automat_podajnik(){
 //uruchamianie podajnika sygnal reczny lub z automatyki
 void uruchom_podajnik(){
   pozwolenie_pracy_podajnik = 1;
-  czas_wylaczyc_podajnik = millis() + 15000;
+  czas_wylaczyc_podajnik = millis() + dlugosc_czasu_pracy_podajnika;
 }
 
 //wyłączanie podajnika
@@ -151,6 +157,16 @@ void sterowanie_podajnik(){
       digitalWrite(drv_podajnik,HIGH);
       pozwolenie_pracy_podajnik = 0; 
     }
+  }
+}
+
+//sterowanie wentylatorem
+void automat_went(){
+  if (temperatura_pieca_odczyt <= temperatura_wlacz_nadmuch){
+    digitalWrite(drv_went, LOW);
+  }
+  if (temperatura_pieca_odczyt >= temperatura_setpoint_pieca){
+    digitalWrite(drv_went, HIGH);
   }
 }
 
@@ -192,6 +208,7 @@ void loop() {
 
   //funkcje uruchamiane zawsze
   pomiar_temp();
+  automat_wentylator();
   sterowanie_wentylatorem();
   sterowanie_pompa();
   automat_podajnik();
