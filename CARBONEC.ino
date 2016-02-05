@@ -252,4 +252,5 @@ void loop() {
   sterowanie_pompa();
   automat_podajnik();
   sterowanie_podajnik();
+  sygnalizacja_status_led();
 }
