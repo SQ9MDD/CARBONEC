@@ -14,15 +14,16 @@
  *  Tryby pracy, rozpalanie, praca ciągła.
  *  
  *  CHANGELOG
- *  20160302 poprawki naliczania powtorzen podajnika, czasy pracy podajnika i interwalu pomiedzy wyrzucone do konfiguracji
+ *  2016.02.05 czyszczenie kodu, reformating, komentarze, dodana funkcja stop pieca z klawisza, dodana sygnalizacja stanu pracy diodami LED
+ *  2016.03.02 poprawki naliczania powtorzen podajnika, czasy pracy podajnika i interwalu pomiedzy wyrzucone do konfiguracji
  * 
  */
 // biblioteki
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
-//****************konfiguracja (jeśli nie uzywasz domoticza do konfiguracji)*****************************
-unsigned long podajnik_praca_czas = 15000;                  // czas jednorazowego podawania wegla
+//**************** konfiguracja (jeśli nie uzywasz domoticza do konfiguracji) *****************************
+//
 int temperatura_pieca_odczyt = 0;                           // C*10 pomiar temperatury na piecu
 int temperatura_alarm_pieca = 750;                          // C*10 temperatura przy ktorej uruchamiam alarm i powiadomienie
 int temperatura_setpoint_pieca = 550;                       // C*10 temperatura nastawa pieca (wylaczenie nadmuchu, wyłaczenie flagi rozruch)
@@ -32,7 +33,8 @@ int temperatura_wlacz_pompe = 300;                          // C*10 temperatura 
 int temperatura_wylacz_pompe = 280; 
 unsigned long dlugosc_czasu_pracy_podajnika = 45000;        // jak długo pracuje podajnik po impulsie (msec)
 unsigned long interwal_pomiedzy_praca_podajnika = 30000;    // po skonczonej pracy podajnika czekaj (msec)
-//**************koniec konfiguracji nie modyfikuj nic poniżej jesli nie musisz***************************
+//
+//************** koniec konfiguracji nie modyfikuj nic poniżej jesli nie musisz ***************************
 
 //wejscia wyjscia
 static int drv_ptt = 2;                                 // sterowanie transceiverem RS485
@@ -43,7 +45,10 @@ static int sens_woda_temp = 7;                          // wejscie pomiarowe czu
 static int sens_paliwo_poziom = 0;                      // wejscie awaria brak paliwa
 static int reczny_podajnik = A0;                        // LOW - podawanie ręczne
 static int praca_stop = A1;                             // LOW - praca, przycisk chwilowy
-
+static int led_praca = 8;                               // LED sygnalizacja pracy pieca (ZIELONA)
+static int led_rozruch = 9;                             // LED sygnalizacja rozruchu pieca (ŻÓŁTA)
+static int led_awaria = 10;                             // LED sygbazlizacja awarii pieca (CZERWONA)
+static int led_komunikacja = 11;                        // LED sygnalizacja komunikacji po RS485
 
 //zmienne pomocnicze
 int flaga_rozruch = 0;                                  // flaga sygnalizacyjna rozruch pieca
@@ -71,7 +76,7 @@ void pomiar_temp(){
     //Serial.println(tempC);
     temperatura_pieca_odczyt = int(tempC*10);
     /* START DEBUG*/
-    Serial.println(String(temperatura_pieca_odczyt)+","+pozwolenie_pracy_piec+","+flaga_rozruch+","+wymuszenie_pracy_went+","+pozwolenie_pracy_podajnik+","+flaga_chwilowa_blokada_podajnika+","+licznik_podan_kolejnych); //debug
+    // Serial.println(String(temperatura_pieca_odczyt)+","+pozwolenie_pracy_piec+","+flaga_rozruch+","+wymuszenie_pracy_went+","+pozwolenie_pracy_podajnik+","+flaga_chwilowa_blokada_podajnika+","+licznik_podan_kolejnych); //debug
     /* STOP DEBUG*/
     //zdejmowanie flagi rozruchu po osiągnięciu temperatury zadanej pieca
     if(temperatura_pieca_odczyt >= temperatura_setpoint_pieca){
@@ -161,12 +166,34 @@ void sterowanie_podajnik(){
 }
 
 //sterowanie wentylatorem
-void automat_went(){
+void automat_wentylator(){
   if (temperatura_pieca_odczyt <= temperatura_wlacz_nadmuch){
     digitalWrite(drv_went, LOW);
   }
   if (temperatura_pieca_odczyt >= temperatura_setpoint_pieca){
     digitalWrite(drv_went, HIGH);
+  }
+}
+
+//sygnalizacja stanów pracy sterownika
+void sygnalizacja_status_led(){
+  //praca stop
+  if(pozwolenie_pracy_piec == 1){
+    digitalWrite(led_praca,HIGH);
+  }else{
+    digitalWrite(led_praca,LOW);
+  }
+  //rozruch
+  if(flaga_rozruch == 1){
+    digitalWrite(led_rozruch,HIGH);
+  }else{
+    digitalWrite(led_rozruch,LOW);
+  }
+  //flaga awaria
+  if(flaga_awaria == 1){
+    digitalWrite(led_awaria,HIGH);
+  }else{
+    digitalWrite(led_awaria,LOW);
   }
 }
 
@@ -179,6 +206,10 @@ void setup() {
   pinMode(drv_pompa_wody,OUTPUT);
   pinMode(reczny_podajnik,INPUT_PULLUP);
   pinMode(praca_stop,INPUT_PULLUP);
+  pinMode(led_praca,OUTPUT);
+  pinMode(led_rozruch,OUTPUT);
+  pinMode(led_awaria,OUTPUT);
+  pinMode(led_komunikacja,OUTPUT);
   digitalWrite(drv_ptt,LOW);
   digitalWrite(drv_went,HIGH);
   digitalWrite(drv_podajnik,HIGH);
@@ -187,8 +218,7 @@ void setup() {
 }
 
 //petla glowna
-void loop() {
-  
+void loop() {  
   //klawisz sterowania recznego podajnikiem
   if(digitalRead(reczny_podajnik) == LOW){
     delay(100);
@@ -200,9 +230,18 @@ void loop() {
   if(digitalRead(praca_stop) == LOW){
     delay(100);
     if(digitalRead(praca_stop) == LOW){
-      pozwolenie_pracy_piec = 1;
-      flaga_rozruch = 1;
-      flaga_awaria = 0;
+      //start pieca
+      if(pozwolenie_pracy_piec == 0){
+        pozwolenie_pracy_piec = 1;
+        flaga_rozruch = 1;
+        flaga_awaria = 0;    
+       //stop pieca   
+      }else{
+        pozwolenie_pracy_piec = 0;
+        flaga_rozruch = 0;
+        flaga_awaria = 0;        
+      }
+
     }
   }  
 
