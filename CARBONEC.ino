@@ -241,7 +241,7 @@ void loop() {
         flaga_rozruch = 0;
         flaga_awaria = 0;        
       }
-
+      delay(300); //opoznienie by nie klikac bez sensu wlacz wylacz szybko
     }
   }  
 
