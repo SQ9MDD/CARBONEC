@@ -168,10 +168,10 @@ void sterowanie_podajnik(){
 //sterowanie wentylatorem
 void automat_wentylator(){
   if (temperatura_pieca_odczyt <= temperatura_wlacz_nadmuch){
-    digitalWrite(drv_went, LOW);
+    wymuszenie_pracy_went == 1;
   }
   if (temperatura_pieca_odczyt >= temperatura_setpoint_pieca){
-    digitalWrite(drv_went, HIGH);
+    wymuszenie_pracy_went == 0;
   }
 }
 
