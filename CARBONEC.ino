@@ -24,14 +24,13 @@
 
 //**************** konfiguracja (jeśli nie uzywasz domoticza do konfiguracji) *****************************
 //
-int temperatura_pieca_odczyt = 0;                           // C*10 pomiar temperatury na piecu
 int temperatura_alarm_pieca = 750;                          // C*10 temperatura przy ktorej uruchamiam alarm i powiadomienie
-int temperatura_setpoint_pieca = 550;                       // C*10 temperatura nastawa pieca (wylaczenie nadmuchu, wyłaczenie flagi rozruch)
-int temperatura_wlacz_nadmuch = 530;                        // C*10 temperatura wlaczenia nadmuchu
-int temperatura_wlacz_podajnik = 520;                       // C*10 temperatura wlaczenia podajnika
-int temperatura_wlacz_pompe = 300;                          // C*10 temperatura startu pompy (nie potrzebne zezwolenie pracy)
-int temperatura_wylacz_pompe = 280; 
-unsigned long dlugosc_czasu_pracy_podajnika = 45000;        // jak długo pracuje podajnik po impulsie (msec)
+int temperatura_setpoint_pieca = 410;                       // C*10 temperatura nastawa pieca (wylaczenie nadmuchu, wyłaczenie flagi rozruch)
+int temperatura_wlacz_nadmuch = 405;                        // C*10 temperatura wlaczenia nadmuchu
+int temperatura_wlacz_podajnik = 400;                       // C*10 temperatura wlaczenia podajnika
+int temperatura_wlacz_pompe = 280;                          // C*10 temperatura startu pompy (nie potrzebne zezwolenie pracy)
+int temperatura_wylacz_pompe = 200; 
+unsigned long dlugosc_czasu_pracy_podajnika = 40000;        // jak długo pracuje podajnik po impulsie (msec)
 unsigned long interwal_pomiedzy_praca_podajnika = 30000;    // po skonczonej pracy podajnika czekaj (msec)
 //
 //************** koniec konfiguracji nie modyfikuj nic poniżej jesli nie musisz ***************************
@@ -51,22 +50,23 @@ static int led_awaria = 10;                             // LED sygbazlizacja awa
 static int led_komunikacja = 11;                        // LED sygnalizacja komunikacji po RS485
 
 //zmienne pomocnicze
+int temperatura_pieca_odczyt = 0;                       // C*10 pomiar temperatury na piecu
 int flaga_rozruch = 0;                                  // flaga sygnalizacyjna rozruch pieca
 int flaga_awaria = 0;                                   // flaga sygnalizacyjna awarii pieca
 int pozwolenie_pracy_piec = 0;                          // flaga zezwolenia pracy pieca, ustawiana recznie lub z sieci
 int wymuszenie_pracy_went = 0;                          //
 int pozwolenie_pracy_podajnik = 0;                      // 
 int flaga_chwilowa_blokada_podajnika = 0;               // blokada by podajnik zbyt często nie podawał paliwa
-int licznik_podan_kolejnych = 0;
+int licznik_podan_kolejnych = 0;                        //
 unsigned long czas_wylaczyc_podajnik = 0;               //
 unsigned long czas_na_pomiar = 0;                       //
-unsigned long czas_resetu_podanie_kolejne = 0;
+unsigned long czas_resetu_podanie_kolejne = 0;          //
 
 //inicjalizacja bibliotek OneWire i Dallas temp
 OneWire oneWire(7);
 DallasTemperature sensors(&oneWire);
 
-// mierzymy temperature co 5 sekund
+// mierzymy temperature co 5 sekund uśrednianie dodac pozniej
 void pomiar_temp(){
   if(millis() >= czas_na_pomiar){
     //tutaj robimy pomiar temperatury dallas
@@ -76,12 +76,12 @@ void pomiar_temp(){
     //Serial.println(tempC);
     temperatura_pieca_odczyt = int(tempC*10);
     /* START DEBUG*/
-    // Serial.println(String(temperatura_pieca_odczyt)+","+pozwolenie_pracy_piec+","+flaga_rozruch+","+wymuszenie_pracy_went+","+pozwolenie_pracy_podajnik+","+flaga_chwilowa_blokada_podajnika+","+licznik_podan_kolejnych); //debug
+    Serial.println(String(temperatura_pieca_odczyt)+","+pozwolenie_pracy_piec+","+flaga_rozruch+","+wymuszenie_pracy_went+","+pozwolenie_pracy_podajnik+","+flaga_chwilowa_blokada_podajnika+","+licznik_podan_kolejnych); //debug
     /* STOP DEBUG*/
     //zdejmowanie flagi rozruchu po osiągnięciu temperatury zadanej pieca
     if(temperatura_pieca_odczyt >= temperatura_setpoint_pieca){
       flaga_rozruch = 0;
-      wymuszenie_pracy_went = 0; //przeniesc do automat_wentylator
+      //wymuszenie_pracy_went = 0; //przeniesc do automat_wentylator
     }
     //ustawiamy czas nastepnego pomiaru
     czas_na_pomiar = millis() + 5000;
@@ -102,7 +102,7 @@ void blokady(){
   }
 }
 
-//sterowanie pompa obiegowa pracuje zawsze
+//sterowanie pompa obiegowa pracuje zawsze jesli temp przekroczona niezaleznie od awarii
 void sterowanie_pompa(){
   if(temperatura_pieca_odczyt >= temperatura_wlacz_pompe){
     digitalWrite(drv_pompa_wody,LOW);
@@ -114,10 +114,24 @@ void sterowanie_pompa(){
 
 //funkcje sterowania wentylatorem
 void sterowanie_wentylatorem(){
-  if(flaga_rozruch == 1 || wymuszenie_pracy_went == 1){
-    digitalWrite(drv_went,LOW);
+  if(flaga_awaria == 0){
+    if(flaga_rozruch == 1 || wymuszenie_pracy_went == 1){
+      digitalWrite(drv_went,LOW);
+    }else{
+      digitalWrite(drv_went,HIGH);
+    }     
   }else{
     digitalWrite(drv_went,HIGH);
+  }
+}
+
+//sterowanie wentylatorem
+void automat_wentylator(){
+  if (temperatura_pieca_odczyt <= temperatura_wlacz_nadmuch){
+    wymuszenie_pracy_went == 1;
+  }
+  if (temperatura_pieca_odczyt >= temperatura_setpoint_pieca){
+    wymuszenie_pracy_went == 0;
   }
 }
 
@@ -162,16 +176,6 @@ void sterowanie_podajnik(){
       digitalWrite(drv_podajnik,HIGH);
       pozwolenie_pracy_podajnik = 0; 
     }
-  }
-}
-
-//sterowanie wentylatorem
-void automat_wentylator(){
-  if (temperatura_pieca_odczyt <= temperatura_wlacz_nadmuch){
-    wymuszenie_pracy_went == 1;
-  }
-  if (temperatura_pieca_odczyt >= temperatura_setpoint_pieca){
-    wymuszenie_pracy_went == 0;
   }
 }
 
