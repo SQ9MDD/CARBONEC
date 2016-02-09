@@ -128,10 +128,10 @@ void sterowanie_wentylatorem(){
 //sterowanie wentylatorem
 void automat_wentylator(){
   if (temperatura_pieca_odczyt <= temperatura_wlacz_nadmuch){
-    wymuszenie_pracy_went == 1;
+    wymuszenie_pracy_went = 1;
   }
   if (temperatura_pieca_odczyt >= temperatura_setpoint_pieca){
-    wymuszenie_pracy_went == 0;
+    wymuszenie_pracy_went = 0;
   }
 }
 
