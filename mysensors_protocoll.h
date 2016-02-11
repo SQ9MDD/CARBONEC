@@ -55,6 +55,12 @@ void send_presence(){
     Serial.print(String(net_adr) + ";18;0;0;29;" + String(net_adr) + ".AV8\n");
     delay(15);
     Serial.print(String(net_adr) + ";1;0;0;6;" + String(net_adr) + ".AI1\n"); 
+    delay(15);
+    Serial.print(String(net_adr) + ";21;0;0;3;" + String(net_adr) + ".BV1\n");
+    delay(15);
+    Serial.print(String(net_adr) + ";22;0;0;3;" + String(net_adr) + ".BV2\n"); 
+    delay(15);
+    Serial.print(String(net_adr) + ";23;0;0;3;" + String(net_adr) + ".BV3\n");
     delay(60);       
     
 
@@ -103,7 +109,12 @@ void send_status(){
     delay(20);
     float tmp = float(temperatura_pieca_odczyt/10);
     Serial.print(String(net_adr) + ";1;1;0;0;" + String(tmp) + "\n");
-    
+    delay(15);
+    Serial.print(String(net_adr) + ";21;1;0;2;" + pozwolenie_pracy_piec + "\n");
+    delay(15);
+    Serial.print(String(net_adr) + ";21;1;0;2;" + flaga_rozruch + "\n");  
+    delay(15);
+    Serial.print(String(net_adr) + ";21;1;0;2;" + flaga_awaria + "\n");         
     delay(60); 
     time_to_send_status = millis() + 60000; //raz na minute
     digitalWrite(drv_ptt,LOW);
