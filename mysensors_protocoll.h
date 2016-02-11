@@ -28,6 +28,7 @@ const int net_adr = 73; //allowed range 10-99 !
 char character;
 String content = "";
 unsigned long time_to_send_presence = 0;
+unsigned long time_to_send_setpoints = 0;
 
 //jednorazowo przy starcie wysylamy prezentacje punktow by były widoczne w domoticzu
 //powtarzamy co dwie godziny
@@ -52,14 +53,48 @@ void send_presence(){
     delay(15);
     Serial.print(String(net_adr) + ";18;0;0;29;" + String(net_adr) + ".AV8\n");
     delay(60);       
-    digitalWrite(drv_ptt,LOW); 
+    
 
-   time_to_send_presence = millis() + 120000;
+    time_to_send_presence = millis() + 7200000; //raz na dwie godziny
+    digitalWrite(drv_ptt,LOW); 
   }
 
 }
 
-void send_all_data(){
+void send_setpoints(){
+  if(millis() >= time_to_send_setpoints){
+    digitalWrite(drv_ptt,HIGH);
+    delay(50);
+    float tmp = float(temperatura_alarm_pieca/10);
+    Serial.print(String(net_adr) + ";11;1;0;45;" + String(tmp) + "\n");  
+    delay(15);
+    tmp = float(temperatura_setpoint_pieca/10);
+    Serial.print(String(net_adr) + ";12;1;0;45;" + String(tmp) + "\n");  
+    delay(15);
+    tmp = float(temperatura_wlacz_nadmuch/10);
+    Serial.print(String(net_adr) + ";13;1;0;45;" + String(tmp) + "\n");
+    delay(15);
+    tmp = float(temperatura_wlacz_podajnik/10);
+    Serial.print(String(net_adr) + ";14;1;0;45;" + String(tmp) + "\n");    
+    delay(15);
+    tmp = float(temperatura_wlacz_pompe/10);
+    Serial.print(String(net_adr) + ";15;1;0;45;" + String(tmp) + "\n"); 
+    delay(15);
+    tmp = float(temperatura_wylacz_pompe/10);
+    Serial.print(String(net_adr) + ";16;1;0;45;" + String(tmp) + "\n");
+    delay(15);
+    int tmp_b = (dlugosc_czasu_pracy_podajnika/1000);
+    Serial.print(String(net_adr) + ";17;1;0;45;" + String(tmp_b) + "\n");   
+    delay(15);
+    tmp_b = (interwal_pomiedzy_praca_podajnika/1000);
+    Serial.print(String(net_adr) + ";18;1;0;45;" + String(tmp_b) + "\n");       
+        
+    time_to_send_setpoints = millis() + 36000000; //raz na godzine
+    digitalWrite(drv_ptt,LOW);
+  }
+}
+
+void send_status(){
 
 }
 
