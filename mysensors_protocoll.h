@@ -121,9 +121,9 @@ void send_status(){
     delay(15);
     Serial.print(String(net_adr) + ";21;1;0;2;" + pozwolenie_pracy_piec + "\n");
     delay(15);
-    Serial.print(String(net_adr) + ";21;1;0;2;" + flaga_rozruch + "\n");  
+    Serial.print(String(net_adr) + ";22;1;0;2;" + flaga_rozruch + "\n");  
     delay(15);
-    Serial.print(String(net_adr) + ";21;1;0;2;" + flaga_awaria + "\n");  
+    Serial.print(String(net_adr) + ";23;1;0;2;" + flaga_awaria + "\n");  
     delay(15);
     Serial.print(String(net_adr) + ";31;1;1;2;" + wymuszenie_pracy_went + "\n"); 
     delay(15);
