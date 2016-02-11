@@ -29,6 +29,7 @@ char character;
 String content = "";
 unsigned long time_to_send_presence = 0;
 unsigned long time_to_send_setpoints = 0;
+unsigned long time_to_send_status = 0;
 
 //jednorazowo przy starcie wysylamy prezentacje punktow by były widoczne w domoticzu
 //powtarzamy co dwie godziny
@@ -52,6 +53,8 @@ void send_presence(){
     Serial.print(String(net_adr) + ";17;0;0;29;" + String(net_adr) + ".AV7\n");
     delay(15);
     Serial.print(String(net_adr) + ";18;0;0;29;" + String(net_adr) + ".AV8\n");
+    delay(15);
+    Serial.print(String(net_adr) + ";1;0;0;6;" + String(net_adr) + ".AI1\n"); 
     delay(60);       
     
 
@@ -95,6 +98,16 @@ void send_setpoints(){
 }
 
 void send_status(){
+  if(millis() >= time_to_send_status){
+    digitalWrite(drv_ptt,HIGH);
+    delay(20);
+    float tmp = float(temperatura_pieca_odczyt/10);
+    Serial.print(String(net_adr) + ";1;1;0;0;" + String(tmp) + "\n");
+    
+    delay(60); 
+    time_to_send_status = millis() + 60000; //raz na minute
+    digitalWrite(drv_ptt,LOW);
+  }
 
 }
 

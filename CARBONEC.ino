@@ -284,4 +284,5 @@ void loop() {
   //funkcje komunikacyjne  
   send_presence();    
   send_setpoints();
+  send_status();
 }
