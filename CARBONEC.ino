@@ -85,9 +85,9 @@ void pomiar_temp(){
     float tempC = sensors.getTempCByIndex(0);
     //Serial.println(tempC);
     temperatura_pieca_odczyt = int(tempC*10);
-    /* START DEBUG*/
-    Serial.println(String(temperatura_pieca_odczyt)+","+flaga_awaria+","+pozwolenie_pracy_piec+","+flaga_rozruch+","+wymuszenie_pracy_went+","+pozwolenie_pracy_podajnik+","+flaga_chwilowa_blokada_podajnika+","+licznik_podan_kolejnych); //debug
-    /* STOP DEBUG*/
+    /* START DEBUG */
+    // Serial.println(String(temperatura_pieca_odczyt)+","+flaga_awaria+","+pozwolenie_pracy_piec+","+flaga_rozruch+","+wymuszenie_pracy_went+","+pozwolenie_pracy_podajnik+","+flaga_chwilowa_blokada_podajnika+","+licznik_podan_kolejnych); //debug
+    /* STOP DEBUG */
     //zdejmowanie flagi rozruchu po osiągnięciu temperatury zadanej pieca
     if(temperatura_pieca_odczyt >= temperatura_setpoint_pieca){
       flaga_rozruch = 0;
