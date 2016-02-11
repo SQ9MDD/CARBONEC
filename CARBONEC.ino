@@ -13,7 +13,14 @@
  *  Komunikacja, protokół my sensors po RS-485
  *  Tryby pracy, rozpalanie, praca ciągła.
  *  
+ *  Roadmap:
+ *  1. mysensors wysyłanie nastaw do sieci
+ *  2. mysensors obsługa setpointów
+ *  3. zapis do eeprom
+ *  
  *  CHANGELOG
+ *  2016.02.11 mysensors protocoll, pierwsza wersja
+ *  2016.02.09 poprawki błędów wersja stabilna
  *  2016.02.05 czyszczenie kodu, reformating, komentarze, dodana funkcja stop pieca z klawisza, dodana sygnalizacja stanu pracy diodami LED
  *  2016.03.02 poprawki naliczania powtorzen podajnika, czasy pracy podajnika i interwalu pomiedzy wyrzucone do konfiguracji
  * 
@@ -65,6 +72,9 @@ unsigned long czas_resetu_podanie_kolejne = 0;          //
 //inicjalizacja bibliotek OneWire i Dallas temp
 OneWire oneWire(7);
 DallasTemperature sensors(&oneWire);
+
+// podlaczamy komunikacje z domoticz
+#include "mysensors_protocoll.h"
 
 // mierzymy temperature co 5 sekund uśrednianie dodac pozniej
 void pomiar_temp(){
@@ -218,7 +228,8 @@ void setup() {
   digitalWrite(drv_went,HIGH);
   digitalWrite(drv_podajnik,HIGH);
   digitalWrite(drv_pompa_wody,HIGH);
-  Serial.begin(9600);
+  //mysensors protocol
+  Serial.begin(115200);
 }
 
 //petla glowna
@@ -257,4 +268,19 @@ void loop() {
   automat_podajnik();
   sterowanie_podajnik();
   sygnalizacja_status_led();
+
+  //komunikacja słuchamy eresa
+  while(Serial.available()) {
+    character = Serial.read();
+    content.concat(character);
+    delay (10);
+  }
+    //obróbka danych z eresa
+    content.trim();//clearing CR i LF  
+    if(content != ""){
+     decode_packet();
+     content = "";
+    }  
+  //funkcje komunikacyjne  
+  send_presence();    
 }
