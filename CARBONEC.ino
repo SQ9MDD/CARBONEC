@@ -63,6 +63,7 @@ int flaga_awaria = 0;                                   // flaga sygnalizacyjna 
 int pozwolenie_pracy_piec = 0;                          // flaga zezwolenia pracy pieca, ustawiana recznie lub z sieci
 int wymuszenie_pracy_went = 0;                          //
 int pozwolenie_pracy_podajnik = 0;                      // 
+int praca_pompy_obiegowej = 0;
 int flaga_chwilowa_blokada_podajnika = 0;               // blokada by podajnik zbyt często nie podawał paliwa
 int licznik_podan_kolejnych = 0;                        //
 unsigned long czas_wylaczyc_podajnik = 0;               //
@@ -116,9 +117,11 @@ void blokady(){
 void sterowanie_pompa(){
   if(temperatura_pieca_odczyt >= temperatura_wlacz_pompe){
     digitalWrite(drv_pompa_wody,LOW);
+    praca_pompy_obiegowej = 1;
   }
   if(temperatura_pieca_odczyt <= temperatura_wylacz_pompe){
     digitalWrite(drv_pompa_wody,HIGH);  
+    praca_pompy_obiegowej = 0;
   }
 }
 

@@ -19,6 +19,9 @@
  * BV1 = pozwolenie_pracy_piec
  * BV2 = flaga_rozruch
  * BV3 = flaga_awaria
+ * BO1 = wentylator
+ * BO2 = podajnik
+ * BO3 = pompa obiegowa
  */
 
  //ustawienia sieciowe
@@ -61,6 +64,12 @@ void send_presence(){
     Serial.print(String(net_adr) + ";22;0;0;3;" + String(net_adr) + ".BV2\n"); 
     delay(15);
     Serial.print(String(net_adr) + ";23;0;0;3;" + String(net_adr) + ".BV3\n");
+    delay(15);
+    Serial.print(String(net_adr) + ";31;0;0;3;" + String(net_adr) + ".BO1\n");
+    delay(15);
+    Serial.print(String(net_adr) + ";32;0;0;3;" + String(net_adr) + ".BO2\n");
+    delay(15);
+    Serial.print(String(net_adr) + ";33;0;0;3;" + String(net_adr) + ".BO3\n");        
     delay(60);       
     
 
@@ -114,7 +123,13 @@ void send_status(){
     delay(15);
     Serial.print(String(net_adr) + ";21;1;0;2;" + flaga_rozruch + "\n");  
     delay(15);
-    Serial.print(String(net_adr) + ";21;1;0;2;" + flaga_awaria + "\n");         
+    Serial.print(String(net_adr) + ";21;1;0;2;" + flaga_awaria + "\n");  
+    delay(15);
+    Serial.print(String(net_adr) + ";31;1;1;2;" + wymuszenie_pracy_went + "\n"); 
+    delay(15);
+    Serial.print(String(net_adr) + ";32;1;1;2;" + pozwolenie_pracy_podajnik + "\n");
+    delay(15);
+    Serial.print(String(net_adr) + ";33;1;1;2;" + praca_pompy_obiegowej + "\n");                
     delay(60); 
     time_to_send_status = millis() + 60000; //raz na minute
     digitalWrite(drv_ptt,LOW);
